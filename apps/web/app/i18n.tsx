@@ -1,67 +1,40 @@
 'use client';
-
 import { createContext, ReactNode, useContext, useEffect, useState } from 'react';
 import type { AppLocale } from '@base/contracts';
 import { client } from './api';
+import { es, TranslationKey, Dictionary } from './locales/es';
+import { en } from './locales/en';
 
 export type { AppLocale } from '@base/contracts';
-const translations: Record<AppLocale, Record<string, string>> = {
-  es: {},
-  en: {
-    'Inicio': 'Home', 'Mi perfil': 'My profile', 'Usuarios': 'Users', 'Cerrar sesión': 'Sign out',
-    'Superadministrador': 'Super administrator', 'Administrador': 'Administrator', 'Usuario': 'User',
-    'Cargando…': 'Loading…', 'Bienvenido a tu espacio de trabajo.': 'Welcome to your workspace.',
-    'Tu cuenta': 'Your account', 'Sesión protegida con JWT · Rol:': 'JWT-protected session · Role:',
-    'CUENTA': 'ACCOUNT', 'Consulta y actualiza tu información personal.': 'View and update your personal information.',
-    'Información de la cuenta': 'Account information', 'Correo electrónico': 'Email address', 'Rol': 'Role', 'Estado': 'Status',
-    'Activo': 'Active', 'Inactivo': 'Inactive', 'Fecha de registro': 'Registration date',
-    'El correo electrónico y el rol no se pueden modificar desde el perfil.': 'Email address and role cannot be changed from your profile.',
-    'Nombre': 'Name', 'Actualiza el nombre asociado a tu cuenta.': 'Update the name associated with your account.',
-    'Guardando…': 'Saving…', 'Guardar nombre': 'Save name', 'Cambiar contraseña': 'Change password',
-    'Por seguridad, confirma tu contraseña actual. La nueva debe tener al menos 12 caracteres.': 'For security, confirm your current password. Your new password must be at least 12 characters.',
-    'Contraseña actual': 'Current password', 'Nueva contraseña': 'New password',
-    'Nombre actualizado correctamente.': 'Name updated successfully.', 'Contraseña actualizada correctamente.': 'Password updated successfully.',
-    'No se pudo actualizar el perfil.': 'Could not update profile.', 'No se pudo actualizar el nombre.': 'Could not update name.',
-    'No se pudo actualizar la contraseña.': 'Could not update password.',
-    'ADMINISTRACIÓN': 'ADMINISTRATION', 'Gestiona las cuentas y sus permisos.': 'Manage accounts and their permissions.',
-    'Crear usuario': 'Create user', 'Cancelar': 'Cancel', 'Usuario creado correctamente.': 'User created successfully.',
-    'Editar usuario': 'Edit user', 'Editar': 'Edit', 'Usuario actualizado correctamente.': 'User updated successfully.',
-    'Nueva contraseña (opcional)': 'New password (optional)',
-    'Deja el campo vacío para conservar la contraseña actual.': 'Leave blank to keep the current password.',
-    'Sesiones': 'Sessions', 'Cerrar todas mis sesiones': 'Sign out of all sessions',
-    '¿Cerrar todas tus sesiones, incluida esta?': 'Sign out of all sessions, including this one?',
-    'Cierra el acceso en todos los dispositivos, incluido este.': 'Sign out on all devices, including this one.',
-    'Cambiar la contraseña cerrará todas tus sesiones.': 'Changing your password will sign you out on all devices.',
-    'Error al crear usuario.': 'Could not create user.', 'No se pudo actualizar.': 'Could not update user.',
-    'No se pudo eliminar.': 'Could not delete user.', 'Correo': 'Email', 'Contraseña (mínimo 12 caracteres)': 'Password (at least 12 characters)',
-    'Guardar usuario': 'Save user', 'Acciones': 'Actions', 'Eliminar': 'Delete',
-    '¿Eliminar permanentemente a': 'Permanently delete', 'No hay usuarios para mostrar.': 'No users to display.',
-    'INICIO': 'HOME', 'Hola,': 'Hello,', 'Bienvenido': 'Welcome', 'Inicia sesión para continuar.': 'Sign in to continue.',
-    'Contraseña': 'Password', 'Ingresando…': 'Signing in…', 'Iniciar sesión': 'Sign in',
-    'Acceso disponible únicamente para usuarios creados por un administrador.': 'Access is only available to accounts created by an administrator.',
-    'No se pudo iniciar sesión.': 'Could not sign in.', 'No se pudo conectar con el servidor.': 'Could not connect to the server.',
-    'Reintentar': 'Retry', 'No tienes permisos para esta acción.': 'You are not allowed to perform this action.',
-    'Sesión expirada o inválida.': 'Session expired or invalid.', 'Error interno del servidor.': 'Internal server error.',
-  },
-};
-
-type I18nContextValue = { locale: AppLocale; t: (text: string) => string };
-const I18nContext = createContext<I18nContextValue>({ locale: 'es', t: (text) => text });
+export type { TranslationKey } from './locales/es';
+export const dictionaries: Record<AppLocale, Dictionary> = { es, en };
+type Translate = (key: TranslationKey, params?: Record<string, string | number>) => string;
+const I18nContext = createContext<{ locale: AppLocale; t: Translate; message: (text: string) => string } | null>(null);
 
 export function I18nProvider({ children }: { children: ReactNode }) {
-  const [locale, setLocale] = useState<AppLocale>('es');
+  const [locale, setLocale] = useState<AppLocale | null>(null);
+  const [failed, setFailed] = useState(false); const [attempt, setAttempt] = useState(0);
   useEffect(() => {
-    let mounted = true;
-    client.config()
-      .then((config) => {
-        if (!mounted || (config?.locale !== 'es' && config?.locale !== 'en')) return;
-        setLocale(config.locale);
-        document.documentElement.lang = config.locale;
-      }).catch(() => undefined);
-    return () => { mounted = false; };
-  }, []);
-  const t = (text: string) => translations[locale][text] || text;
-  return <I18nContext.Provider value={{ locale, t }}>{children}</I18nContext.Provider>;
+    let active = true;
+    setFailed(false);
+    client.config().then((config) => {
+      if (config.locale !== 'es' && config.locale !== 'en') throw new Error('Unsupported locale');
+      if (active) { document.documentElement.lang = config.locale; setLocale(config.locale); }
+    }).catch(() => { if (active) setFailed(true); });
+    return () => { active = false; };
+  }, [attempt]);
+  // No language-dependent UI is rendered before the runtime configuration is known.
+  if (!locale) return <main className="grid min-h-screen place-content-center gap-4 p-6">{failed ? <><p role="alert">No se pudo cargar el idioma / Could not load language</p><button onClick={() => setAttempt((value) => value + 1)} className="rounded-lg bg-blue-600 px-4 py-2 text-white">Reintentar / Retry</button></> : <div role="status" aria-label="Loading" className="mx-auto h-8 w-8 animate-spin rounded-full border-4 border-slate-200 border-t-blue-600" />}</main>;
+  const t: Translate = (key, params = {}) => dictionaries[locale][key].replace(/\{(\w+)\}/g, (placeholder, name: string) => String(params[name] ?? placeholder));
+  // API messages already use the selected locale; normalize only local fallback errors.
+  const message = (text: string) => {
+    const key = (Object.keys(es) as TranslationKey[]).find((key) => es[key] === text);
+    return key ? t(key) : text;
+  };
+  return <I18nContext.Provider value={{ locale, t, message }}>{children}</I18nContext.Provider>;
 }
-
-export function useI18n() { return useContext(I18nContext); }
+export function useI18n() {
+  const context = useContext(I18nContext);
+  if (!context) throw new Error('useI18n requires I18nProvider');
+  return context;
+}

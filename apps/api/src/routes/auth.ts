@@ -10,7 +10,7 @@ export const authRoutes = Router();
 const loginLimit = attemptLimiter(prisma, 'login', (req) => typeof req.body?.email === 'string' ? req.body.email.trim().toLowerCase().slice(0, 254) : 'invalid');
 const passwordLimit = attemptLimiter(prisma, 'password', (req) => (req as AuthRequest).user!.id);
 authRoutes.post('/login', loginLimit, async (req, res) => {
-  const result = await auth.login(validate(loginSchema, req.body));
+  const result = await auth.login(validate(loginSchema, req.body, false));
   await res.locals.resetAttempts();
   res.cookie(cookieName, result.token, cookieOptions());
   res.json({ user: result.user } satisfies UserResponse);

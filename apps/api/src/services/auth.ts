@@ -20,7 +20,7 @@ export async function updateProfile(id: string, input: ProfileInput, verified: (
   const user = await prisma.user.findUnique({ where: { id } });
   if (!user?.active) throw new AppError(401, 'La cuenta no está activa.', 'This account is inactive.');
   if (input.newPassword) {
-    if (!(await bcrypt.compare(input.currentPassword!, user.passwordHash))) throw new AppError(400, 'La contraseña actual es incorrecta.', 'Current password is incorrect.');
+    if (!(await bcrypt.compare(input.currentPassword!, user.passwordHash))) throw new AppError(400, 'La contraseña actual es incorrecta.', 'Current password is incorrect.', 'VALIDATION_ERROR', { currentPassword: [config.APP_LOCALE === 'en' ? 'Current password is incorrect.' : 'La contraseña actual es incorrecta.'] });
     await verified();
   }
   const updated = await prisma.user.update({ where: { id }, data: {

@@ -1,5 +1,5 @@
 import bcrypt from 'bcryptjs';
-import type { User, CreateUserInput, UpdateUserInput, Role } from '@base/contracts';
+import type { User, CreateUserInput, UpdateUserInput, Role, UsersResponse } from '@base/contracts';
 import { prisma } from '../db';
 import { AppError } from '../errors';
 import { assertAssignRole, assertManage } from '../permissions';
@@ -8,8 +8,14 @@ export const publicSelect = { id: true, name: true, email: true, role: true, act
 export const publicUser = (user: Omit<User, 'createdAt'> & { createdAt: Date }): User => ({
   id: user.id, name: user.name, email: user.email, role: user.role, active: user.active, createdAt: user.createdAt.toISOString(),
 });
-export async function listUsers(): Promise<User[]> {
-  return (await prisma.user.findMany({ orderBy: { createdAt: 'desc' }, select: publicSelect })).map(publicUser);
+export async function listUsers(page: number, limit: number, database = prisma): Promise<UsersResponse> {
+  return database.$transaction(async (tx) => {
+    const total = await tx.user.count();
+    const totalPages = Math.max(1, Math.ceil(total / limit));
+    const currentPage = Math.min(page, totalPages);
+    const users = await tx.user.findMany({ orderBy: [{ createdAt: 'desc' }, { id: 'desc' }], select: publicSelect, skip: (currentPage - 1) * limit, take: limit });
+    return { users: users.map(publicUser), pagination: { page: currentPage, limit, total, totalPages } };
+  }, { isolationLevel: 'RepeatableRead' });
 }
 export async function createUser(actor: Role, input: CreateUserInput): Promise<User> {
   assertAssignRole(actor, input.role);

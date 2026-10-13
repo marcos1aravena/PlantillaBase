@@ -19,7 +19,8 @@ Plantilla base de aplicación para proyectos futuros. Es un monorepo npm con fro
 - `apps/api/src/routes`, `services`, `middleware/auth.ts`, `permissions.ts`, `validation.ts`, `errors.ts`: HTTP, negocio, autenticación, permisos, validación y errores separados.
 - `packages/contracts`: tipos compartidos `@base/contracts`, sin código runtime ni Prisma. Usar importaciones `type`.
 - `apps/web/app/home/layout.tsx`: shell autenticado persistente; páginas independientes home/profile/users. Estado de usuario en `components/auth.tsx`.
-- `apps/web/app/i18n.tsx`: diccionario frontend y provider que sincroniza locale en runtime con la API.
+- `apps/web/app/i18n.tsx`: provider que sincroniza locale en runtime con la API.
+- Diccionarios en `apps/web/app/locales/es.ts` y `en.ts`, claves estables y tipadas. `t` solo acepta TranslationKey; `message` normaliza mensajes locales/API. El provider bloquea la interfaz hasta conocer el idioma y ofrece reintento explícito si falla.
 - `apps/api/prisma/schema.prisma`: modelo de usuarios y enum de roles.
 - `apps/api/prisma/migrations`: migraciones versionadas.
 - `apps/api/prisma/seed.ts`: crea de forma idempotente el superadministrador inicial.
@@ -38,6 +39,7 @@ Plantilla base de aplicación para proyectos futuros. Es un monorepo npm con fro
 - Al cambiar un rol o desactivar una cuenta, la autenticación consulta el estado actual del usuario para que el cambio aplique a sesiones existentes.
 - Las contraseñas se guardan únicamente como hashes bcrypt. Nunca pasar el campo `password` directamente a Prisma: mapearlo a `passwordHash`.
 - El formulario administrativo permite editar nombre, correo, rol y contraseña opcional; los administradores solo pueden editar cuentas USER. La consulta administrativa no devuelve hashes.
+- Listado paginado `/api/users?page=1&limit=20` (máximo 100), con metadatos compartidos en `UsersResponse`. Sin búsqueda ni filtros. Validación detallada con fieldErrors excepto login, siempre genérico.
 - `JWT_EXPIRES_IN` se valida en `apps/api/src/session.ts`: unidades s/m/h, valor positivo y máximo de 8 horas. Controla tanto JWT como cookie y solo afecta a sesiones nuevas.
 - `sessionVersion` invalida todos los JWT de un usuario al cambiar contraseña o revocar desde el perfil; no existen revocaciones por dispositivo.
 - Configuración centralizada en `apps/api/src/config.ts`. Limitación persistente por IP/cuenta en `AuthAttempt`, configurable con AUTH_MAX_ATTEMPTS/AUTH_WINDOW_SECONDS/AUTH_BLOCK_SECONDS.

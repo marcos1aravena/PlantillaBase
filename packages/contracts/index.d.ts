@@ -13,8 +13,9 @@ export interface CreateUserInput { name: string; email: string; password: string
 export interface UpdateUserInput { name?: string; email?: string; password?: string; role?: Role; active?: boolean }
 export interface ProfileInput { name?: string; currentPassword?: string; newPassword?: string }
 export interface UserResponse { user: User }
-export interface UsersResponse { users: User[] }
+export interface Pagination { page: number; limit: number; total: number; totalPages: number }
+export interface UsersResponse { users: User[]; pagination: Pagination }
 export interface ProfileResponse extends UserResponse { sessionsRevoked: boolean }
 export interface ConfigResponse { locale: AppLocale }
 export interface CsrfResponse { token: string }
-export interface ErrorResponse { error: string; code?: string; retryAfter?: number }
+export interface ErrorResponse { error: string; code?: string; retryAfter?: number; fieldErrors?: Record<string, string[]> }

@@ -77,6 +77,14 @@ El idioma es global y se configura con `APP_LOCALE` en `.env`: `es` (predetermin
 - **Al cambiar el idioma**, edita `APP_LOCALE` en `.env` y ejecuta `docker compose up -d`. Esto recrea los servicios afectados con el nuevo valor; no hace falta reconstruir las imágenes. Los usuarios con la aplicación abierta deben recargar la página.
 - **Al cambiar el código** que implementa o utiliza los idiomas, reconstruye API y frontend con `docker compose up --build -d api web`. `docker compose up -d` y `docker compose up -d --force-recreate api` solo crean contenedores desde las imágenes existentes; no incorporan cambios de código.
 
+Los diccionarios frontend están separados en `apps/web/app/locales/es.ts` y `en.ts`. Usa claves estables tipadas (por ejemplo `t('profile.saveName')`); TypeScript exige que inglés cubra todas las claves de español. Las pruebas verifican también los parámetros de interpolación. La interfaz no se muestra hasta recibir `/api/config`; si falla, presenta un aviso bilingüe y un botón de reintento, sin asumir otro idioma.
+
+### Validación y listado de usuarios
+
+Las respuestas de validación incluyen `fieldErrors`, un mapa de campos a mensajes traducidos que se muestran en los formularios de perfil y administración. El login es la excepción: responde de forma genérica y no incluye errores por campo ni pistas sobre la existencia de una cuenta.
+
+`GET /api/users?page=1&limit=20` acepta páginas enteras positivas y un límite entre 1 y 100. Devuelve `users` y `pagination` (`page`, `limit`, `total`, `totalPages`). Una página fuera del rango de datos se ajusta a la última disponible; una lista vacía utiliza la página 1. El orden es estable por fecha de creación e ID. PostgreSQL pagina con `skip`/`take`, y la consulta selecciona exclusivamente campos públicos, sin hashes ni versiones de sesión. La interfaz permite elegir 10, 20, 50 o 100 elementos y navegar con Anterior/Siguiente. No se incluyen búsqueda ni filtros en esta etapa.
+
 ## Copias de seguridad
 
 Consulta [la guía de backup y restauración de PostgreSQL](docs/postgresql-backups.md). Incluye comandos PowerShell para generar archivos, verificar su contenido y restaurar en una base nueva sin sobrescribir producción.

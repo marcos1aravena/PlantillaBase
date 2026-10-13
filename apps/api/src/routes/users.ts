@@ -1,12 +1,12 @@
 import { Router } from 'express';
 import type { UsersResponse, UserResponse } from '@base/contracts';
 import { authenticate, AuthRequest, requireAdmin } from '../middleware/auth';
-import { createUserSchema, updateUserSchema, validate } from '../validation';
+import { createUserSchema, updateUserSchema, paginationSchema, validate } from '../validation';
 import * as users from '../services/users';
 
 export const userRoutes = Router();
 userRoutes.use(authenticate, requireAdmin);
-userRoutes.get('/', async (_req, res) => { res.json({ users: await users.listUsers() } satisfies UsersResponse); });
+userRoutes.get('/', async (req, res) => { const { page, limit } = validate(paginationSchema, req.query); res.json(await users.listUsers(page, limit) satisfies UsersResponse); });
 userRoutes.post('/', async (req, res) => {
   res.status(201).json({ user: await users.createUser((req as AuthRequest).user!.role, validate(createUserSchema, req.body)) } satisfies UserResponse);
 });

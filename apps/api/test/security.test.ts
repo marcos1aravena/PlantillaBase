@@ -100,6 +100,50 @@ test('profile validation forbids email and role and pairs password fields', asyn
   assert.throws(() => validate(profileSchema, { currentPassword: 'old', newPassword: 'á'.repeat(37) }));
 });
 
+test('validation details are field-specific except for login', async () => {
+  const { validate, createUserSchema, loginSchema } = await import('../src/validation');
+  const { AppError } = await import('../src/errors');
+  assert.throws(() => validate(createUserSchema, { name: 'x', email: 'bad', password: 'short', role: 'USER' }), (error: unknown) => {
+    assert.ok(error instanceof AppError);
+    assert.ok(error.fieldErrors?.name);
+    assert.ok(error.fieldErrors?.email);
+    assert.ok(error.fieldErrors?.password);
+    return true;
+  });
+  assert.throws(() => validate(loginSchema, { email: 'bad', password: '' }, false), (error: unknown) => {
+    assert.ok(error instanceof AppError);
+    assert.equal(error.message, 'Incorrect email or password.');
+    assert.equal(error.fieldErrors, undefined);
+    return true;
+  });
+});
+
+test('pagination validates defaults, bounds and integer values', async () => {
+  const { validate, paginationSchema } = await import('../src/validation');
+  assert.deepEqual(validate(paginationSchema, {}), { page: 1, limit: 20 });
+  assert.deepEqual(validate(paginationSchema, { page: '2', limit: '100' }), { page: 2, limit: 100 });
+  for (const query of [{ page: '0' }, { page: '1.5' }, { limit: '101' }, { limit: '-1' }, { limit: 'bad' }]) assert.throws(() => validate(paginationSchema, query));
+});
+
+test('user pagination clamps pages and selects only public fields', async () => {
+  const { listUsers } = await import('../src/services/users');
+  let total = 21;
+  let query: { skip: number; take: number; select: Record<string, boolean> } | undefined;
+  const tx = { user: {
+    count: async () => total,
+    findMany: async (input: typeof query) => { query = input; return []; },
+  } };
+  const database = { $transaction: async (callback: (tx: unknown) => Promise<unknown>) => callback(tx) } as unknown as PrismaClient;
+  const result = await listUsers(99, 20, database);
+  assert.deepEqual(result.pagination, { page: 2, limit: 20, total: 21, totalPages: 2 });
+  assert.equal(query?.skip, 20);
+  assert.equal(query?.take, 20);
+  assert.equal(query?.select.passwordHash, undefined);
+  assert.equal(query?.select.sessionVersion, undefined);
+  total = 0;
+  assert.deepEqual((await listUsers(5, 20, database)).pagination, { page: 1, limit: 20, total: 0, totalPages: 1 });
+});
+
 test('refactored app preserves health endpoints and rejects unauthenticated/CSRF requests', async () => {
   const { app } = await import('../src/app');
   const server = app.listen(0, '127.0.0.1');

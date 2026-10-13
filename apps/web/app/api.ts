@@ -1,7 +1,7 @@
 import type { LoginInput, CreateUserInput, UpdateUserInput, ProfileInput, UserResponse, UsersResponse, ProfileResponse, ConfigResponse, ErrorResponse } from '@base/contracts';
 const api = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
 export class ApiError extends Error {
-  constructor(message: string, public status: number, public retryAfter?: number) { super(message); }
+  constructor(message: string, public status: number, public retryAfter?: number, public fieldErrors: Record<string, string[]> = {}) { super(message); }
 }
 let csrfToken: string | null = null;
 let pendingToken: Promise<string> | null = null;
@@ -56,7 +56,7 @@ async function request<T>(path: string, method = 'GET', body?: unknown, anonymou
     const data: Partial<ErrorResponse> = await response.json().catch(() => ({}));
     if (response.status === 401 && !anonymous && typeof window !== 'undefined') window.dispatchEvent(new Event('auth-expired'));
     const fallback = response.status === 403 ? 'No tienes permisos para esta acción.' : response.status === 401 ? 'Sesión expirada o inválida.' : 'Error interno del servidor.';
-    throw new ApiError(data.error || fallback, response.status, data.retryAfter);
+    throw new ApiError(data.error || fallback, response.status, data.retryAfter, data.fieldErrors);
   }
   if (response.status === 204) return undefined as T;
   return response.json() as Promise<T>;
@@ -69,7 +69,7 @@ export const client = {
   logout: () => request<void>('/auth/logout', 'POST'),
   revokeSessions: () => request<void>('/auth/revoke-sessions', 'POST'),
   updateProfile: (body: ProfileInput) => request<ProfileResponse>('/auth/profile', 'PATCH', body),
-  users: () => request<UsersResponse>('/users'),
+  users: (page = 1, limit = 20) => request<UsersResponse>(`/users?page=${page}&limit=${limit}`),
   createUser: (body: CreateUserInput) => request<UserResponse>('/users', 'POST', body),
   updateUser: (id: string, body: UpdateUserInput) => request<UserResponse>(`/users/${encodeURIComponent(id)}`, 'PATCH', body),
   deleteUser: (id: string) => request<void>(`/users/${encodeURIComponent(id)}`, 'DELETE'),
