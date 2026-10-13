@@ -18,6 +18,7 @@ model User {
   name         String
   email        String   @unique
   passwordHash String
+  sessionVersion Int    @default(0)
   role         Role     @default(USER)
   active       Boolean  @default(true)
   createdAt    DateTime @default(now())
@@ -25,4 +26,14 @@ model User {
 
   @@index([role])
   @@index([active])
+}
+
+model AuthAttempt {
+  key             String   @id
+  count           Int      @default(0)
+  windowStartedAt DateTime @default(now())
+  blockedUntil    DateTime?
+  updatedAt       DateTime @updatedAt
+
+  @@index([updatedAt])
 }

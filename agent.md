@@ -34,6 +34,12 @@ Plantilla base de aplicación para proyectos futuros. Es un monorepo npm con fro
 - No permitir eliminar superadministradores ni desactivar al último superadministrador activo.
 - Al cambiar un rol o desactivar una cuenta, la autenticación consulta el estado actual del usuario para que el cambio aplique a sesiones existentes.
 - Las contraseñas se guardan únicamente como hashes bcrypt. Nunca pasar el campo `password` directamente a Prisma: mapearlo a `passwordHash`.
+- El formulario administrativo permite editar nombre, correo, rol y contraseña opcional; los administradores solo pueden editar cuentas USER. La consulta administrativa no devuelve hashes.
+- `JWT_EXPIRES_IN` se valida en `apps/api/src/session.ts`: unidades s/m/h, valor positivo y máximo de 8 horas. Controla tanto JWT como cookie y solo afecta a sesiones nuevas.
+- `sessionVersion` invalida todos los JWT de un usuario al cambiar contraseña o revocar desde el perfil; no existen revocaciones por dispositivo.
+- Configuración centralizada en `apps/api/src/config.ts`. Limitación persistente por IP/cuenta en `AuthAttempt`, configurable con AUTH_MAX_ATTEMPTS/AUTH_WINDOW_SECONDS/AUTH_BLOCK_SECONDS.
+- Todas las escrituras requieren origen autorizado y CSRF firmado. Utilizar `apiFetch` de `apps/web/app/api.ts` para llamadas frontend, incluida autenticación.
+- Contraseñas nuevas: mínimo 12 caracteres, máximo 72 bytes UTF-8; no truncar. Helmet protege las cabeceras API.
 
 ## Comandos habituales
 

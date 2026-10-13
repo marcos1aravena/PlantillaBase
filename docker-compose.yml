@@ -25,6 +25,9 @@ services:
       DATABASE_URL: postgresql://${POSTGRES_USER:-base_user}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-base_app}?schema=public
       JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env}
       JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-8h}
+      AUTH_MAX_ATTEMPTS: ${AUTH_MAX_ATTEMPTS:-10}
+      AUTH_WINDOW_SECONDS: ${AUTH_WINDOW_SECONDS:-300}
+      AUTH_BLOCK_SECONDS: ${AUTH_BLOCK_SECONDS:-300}
       COOKIE_SECURE: ${COOKIE_SECURE:-false}
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
       SEED_SUPERADMIN_NAME: ${SEED_SUPERADMIN_NAME:-Superadministrador}

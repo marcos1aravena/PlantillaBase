@@ -10,6 +10,7 @@ async function main() {
   const password = process.env.SEED_SUPERADMIN_PASSWORD;
   if (!email || !password) throw new Error('Set SEED_SUPERADMIN_EMAIL and SEED_SUPERADMIN_PASSWORD before seeding.');
   if (password.length < 12) throw new Error('SEED_SUPERADMIN_PASSWORD must contain at least 12 characters.');
+  if (Buffer.byteLength(password, 'utf8') > 72) throw new Error('SEED_SUPERADMIN_PASSWORD must not exceed 72 UTF-8 bytes.');
 
   const passwordHash = await bcrypt.hash(password, 12);
   await prisma.user.upsert({

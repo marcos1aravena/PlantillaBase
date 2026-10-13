@@ -4,6 +4,7 @@ import { FormEvent, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ShieldCheck } from 'lucide-react';
 import { useI18n } from '../i18n';
+import { apiFetch as fetch } from '../api';
 
 const api = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
 
