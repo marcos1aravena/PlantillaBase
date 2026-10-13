@@ -1,0 +1,12 @@
+{
+  "name": "base-project-template",
+  "private": true,
+  "workspaces": ["apps/*"],
+  "scripts": {
+    "dev": "concurrently -n api,web -c blue,green \"npm run dev -w @base/api\" \"npm run dev -w @base/web\"",
+    "build": "npm run build -w @base/api && npm run build -w @base/web",
+    "db:migrate": "npm run db:migrate -w @base/api",
+    "db:seed": "npm run db:seed -w @base/api"
+  },
+  "devDependencies": { "concurrently": "^9.1.2" }
+}
