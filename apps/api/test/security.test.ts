@@ -78,3 +78,47 @@ test('signed CSRF token allows only matching cookie, header and origin', async (
   protectWrites(request('http://localhost:3000', forged, forged), res, () => { allowed = true; });
   assert.equal(allowed, false);
 });
+
+test('permission matrix prevents administrators from mutating peer accounts', async () => {
+  const { canManage, assertManage, assertAssignRole } = await import('../src/permissions');
+  assert.equal(canManage('ADMIN', 'USER'), true);
+  assert.equal(canManage('ADMIN', 'ADMIN'), false);
+  assert.equal(canManage('ADMIN', 'SUPERADMIN'), false);
+  assert.equal(canManage('USER', 'USER'), false);
+  assert.equal(canManage('SUPERADMIN', 'ADMIN'), true);
+  assert.throws(() => assertManage('ADMIN', 'ADMIN'));
+  assert.throws(() => assertAssignRole('ADMIN', 'ADMIN'));
+  assert.doesNotThrow(() => assertAssignRole('SUPERADMIN', 'ADMIN'));
+});
+
+test('profile validation forbids email and role and pairs password fields', async () => {
+  const { validate, profileSchema } = await import('../src/validation');
+  assert.deepEqual(validate(profileSchema, { name: 'New name' }), { name: 'New name' });
+  assert.throws(() => validate(profileSchema, { email: 'new@example.com' }));
+  assert.throws(() => validate(profileSchema, { role: 'ADMIN' }));
+  assert.throws(() => validate(profileSchema, { newPassword: 'long-new-password' }));
+  assert.throws(() => validate(profileSchema, { currentPassword: 'old', newPassword: 'á'.repeat(37) }));
+});
+
+test('refactored app preserves health endpoints and rejects unauthenticated/CSRF requests', async () => {
+  const { app } = await import('../src/app');
+  const server = app.listen(0, '127.0.0.1');
+  await new Promise<void>((resolve) => server.once('listening', resolve));
+  const address = server.address();
+  assert.ok(address && typeof address !== 'string');
+  const url = `http://127.0.0.1:${address.port}`;
+  try {
+    assert.equal((await fetch(`${url}/api/health`)).status, 200);
+    assert.equal((await fetch(`${url}/api/auth/me`)).status, 401);
+    assert.equal((await fetch(`${url}/api/users`)).status, 401);
+    const rejected = await fetch(`${url}/api/auth/logout`, { method: 'POST', headers: { Origin: 'http://localhost:3000' } });
+    assert.equal(rejected.status, 403);
+    assert.equal((await rejected.json()).code, 'CSRF_INVALID');
+    const csrf = await fetch(`${url}/api/auth/csrf`);
+    const { token } = await csrf.json();
+    const cookie = csrf.headers.get('set-cookie')!.split(';')[0];
+    assert.equal((await fetch(`${url}/api/auth/logout`, { method: 'POST', headers: { Origin: 'http://localhost:3000', Cookie: cookie, 'X-CSRF-Token': token } })).status, 204);
+  } finally {
+    await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
+  }
+});

@@ -1,7 +1,7 @@
 {
   "name": "base-project-template",
   "private": true,
-  "workspaces": ["apps/*"],
+  "workspaces": ["apps/*", "packages/*"],
   "scripts": {
     "dev": "concurrently -n api,web -c blue,green \"npm run dev -w @base/api\" \"npm run dev -w @base/web\"",
     "build": "npm run build -w @base/api && npm run build -w @base/web",

@@ -4,9 +4,7 @@ import { FormEvent, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ShieldCheck } from 'lucide-react';
 import { useI18n } from '../i18n';
-import { apiFetch as fetch } from '../api';
-
-const api = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+import { client } from '../api';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -17,9 +15,7 @@ export default function LoginPage() {
     event.preventDefault(); setError(''); setLoading(true);
     const form = new FormData(event.currentTarget);
     try {
-      const response = await fetch(`${api}/api/auth/login`, { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: form.get('email'), password: form.get('password') }) });
-      const result = await response.json();
-      if (!response.ok) throw new Error(t(result.error || 'No se pudo iniciar sesión.'));
+      await client.login({ email: String(form.get('email')), password: String(form.get('password')) });
       router.replace('/home');
     } catch (err) { setError(err instanceof Error ? t(err.message) : t('No se pudo conectar con el servidor.')); }
     finally { setLoading(false); }

@@ -35,6 +35,17 @@ Docker comprueba readiness de API y salud de frontend cada 15 segundos. La web e
 
 Frontend: <http://localhost:3000> · API: <http://localhost:4000/api/health>
 
+## Organización del código
+
+- `packages/contracts`: workspace `@base/contracts`, con los tipos compartidos de usuarios, roles, entradas y respuestas HTTP. No contiene secretos ni depende de Prisma. Ambos proyectos usan estos contratos; el backend valida entradas en runtime mediante Zod.
+- `apps/api/src/app.ts`: configuración Express y montaje de rutas. `server.ts` solo inicia el servidor.
+- `apps/api/src/routes`: capa HTTP de autenticación y usuarios.
+- `apps/api/src/services`: lógica de negocio y acceso a datos. `middleware/auth.ts`, `permissions.ts`, `validation.ts` y `errors.ts` concentran autenticación, permisos, validación y manejo de errores respectivamente.
+- `apps/web/app/home/layout.tsx`: layout autenticado persistente con sidebar. Home, perfil y usuarios son páginas independientes que comparten el estado mediante `components/auth.tsx`.
+- `apps/web/app/api.ts`: cliente HTTP tipado, cookies y CSRF. Convierte fallos en `ApiError` con estado HTTP y espera opcional. Un `401` en una llamada protegida redirige al login; en login permanece como error de credenciales. Un `403` muestra falta de permisos sin cerrar sesión. Los errores de conexión no se confunden con sesiones expiradas, y la carga inicial ofrece reintento.
+
+Al ampliar la API, actualiza los contratos, la validación y los consumidores juntos. Las respuestas públicas no deben incluir hashes ni versiones de sesión.
+
 ## Roles y seguridad
 
 - **Superadministrador:** gestiona todas las cuentas y puede asignar cualquier rol.

@@ -4,9 +4,11 @@ RUN apk add --no-cache openssl
 COPY package.json package-lock.json ./
 COPY apps/api/package.json ./apps/api/package.json
 COPY apps/web/package.json ./apps/web/package.json
+COPY packages/contracts/package.json ./packages/contracts/package.json
 RUN npm ci --ignore-scripts
 
 FROM dependencies AS build
+COPY packages/contracts ./packages/contracts
 COPY apps/api/prisma ./apps/api/prisma
 COPY apps/api ./apps/api
 RUN npx prisma generate --schema=apps/api/prisma/schema.prisma
@@ -24,6 +26,7 @@ ENV NODE_ENV=production
 COPY package.json package-lock.json ./
 COPY apps/api/package.json ./apps/api/package.json
 COPY apps/web/package.json ./apps/web/package.json
+COPY packages/contracts/package.json ./packages/contracts/package.json
 RUN npm ci --workspace=@base/api --omit=dev --ignore-scripts && npm cache clean --force
 COPY --from=build /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=build /app/apps/api/dist ./apps/api/dist

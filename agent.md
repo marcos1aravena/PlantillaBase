@@ -15,7 +15,10 @@ Plantilla base de aplicación para proyectos futuros. Es un monorepo npm con fro
 ## Estructura
 
 - `apps/web`: interfaz Next.js. Rutas principales: `/login`, `/home`, `/home/profile` y `/home/users`.
-- `apps/api/src/server.ts`: endpoints Express, autenticación y autorización.
+- `apps/api/src/server.ts`: inicio del servidor; `app.ts` configura Express y monta rutas.
+- `apps/api/src/routes`, `services`, `middleware/auth.ts`, `permissions.ts`, `validation.ts`, `errors.ts`: HTTP, negocio, autenticación, permisos, validación y errores separados.
+- `packages/contracts`: tipos compartidos `@base/contracts`, sin código runtime ni Prisma. Usar importaciones `type`.
+- `apps/web/app/home/layout.tsx`: shell autenticado persistente; páginas independientes home/profile/users. Estado de usuario en `components/auth.tsx`.
 - `apps/web/app/i18n.tsx`: diccionario frontend y provider que sincroniza locale en runtime con la API.
 - `apps/api/prisma/schema.prisma`: modelo de usuarios y enum de roles.
 - `apps/api/prisma/migrations`: migraciones versionadas.
@@ -39,6 +42,7 @@ Plantilla base de aplicación para proyectos futuros. Es un monorepo npm con fro
 - `sessionVersion` invalida todos los JWT de un usuario al cambiar contraseña o revocar desde el perfil; no existen revocaciones por dispositivo.
 - Configuración centralizada en `apps/api/src/config.ts`. Limitación persistente por IP/cuenta en `AuthAttempt`, configurable con AUTH_MAX_ATTEMPTS/AUTH_WINDOW_SECONDS/AUTH_BLOCK_SECONDS.
 - Todas las escrituras requieren origen autorizado y CSRF firmado. Utilizar `apiFetch` de `apps/web/app/api.ts` para llamadas frontend, incluida autenticación.
+- Preferir los métodos tipados de `client` en `apps/web/app/api.ts`. Manejo común con `ApiError`: 401 protegido invalida UI y redirige, 403 conserva sesión, errores de red permiten reintentar.
 - Contraseñas nuevas: mínimo 12 caracteres, máximo 72 bytes UTF-8; no truncar. Helmet protege las cabeceras API.
 
 ## Comandos habituales

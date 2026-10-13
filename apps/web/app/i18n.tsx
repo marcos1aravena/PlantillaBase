@@ -1,9 +1,10 @@
 'use client';
 
 import { createContext, ReactNode, useContext, useEffect, useState } from 'react';
+import type { AppLocale } from '@base/contracts';
+import { client } from './api';
 
-export type AppLocale = 'es' | 'en';
-const api = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+export type { AppLocale } from '@base/contracts';
 const translations: Record<AppLocale, Record<string, string>> = {
   es: {},
   en: {
@@ -39,6 +40,8 @@ const translations: Record<AppLocale, Record<string, string>> = {
     'Contraseña': 'Password', 'Ingresando…': 'Signing in…', 'Iniciar sesión': 'Sign in',
     'Acceso disponible únicamente para usuarios creados por un administrador.': 'Access is only available to accounts created by an administrator.',
     'No se pudo iniciar sesión.': 'Could not sign in.', 'No se pudo conectar con el servidor.': 'Could not connect to the server.',
+    'Reintentar': 'Retry', 'No tienes permisos para esta acción.': 'You are not allowed to perform this action.',
+    'Sesión expirada o inválida.': 'Session expired or invalid.', 'Error interno del servidor.': 'Internal server error.',
   },
 };
 
@@ -49,7 +52,7 @@ export function I18nProvider({ children }: { children: ReactNode }) {
   const [locale, setLocale] = useState<AppLocale>('es');
   useEffect(() => {
     let mounted = true;
-    fetch(`${api}/api/config`).then((response) => response.ok ? response.json() : null)
+    client.config()
       .then((config) => {
         if (!mounted || (config?.locale !== 'es' && config?.locale !== 'en')) return;
         setLocale(config.locale);
