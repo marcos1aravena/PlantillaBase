@@ -10,15 +10,26 @@ Plantilla de aplicación con Next.js, Express, PostgreSQL, Prisma y TypeScript. 
 ## Ejecución con Docker
 
 1. Copia `.env.example` a `.env` y cambia las contraseñas y el secreto JWT por valores únicos.
-2. Ejecuta `docker compose up --build`.
-3. Abre <http://localhost:3000> e inicia sesión con `SEED_SUPERADMIN_EMAIL` y `SEED_SUPERADMIN_PASSWORD`.
+2. Ejecuta `docker compose up --build -d`.
+3. En la primera instalación, ejecuta `docker compose run --build --rm seed` para crear el superadministrador.
+4. Abre <http://localhost:3000> e inicia sesión con `SEED_SUPERADMIN_EMAIL` y `SEED_SUPERADMIN_PASSWORD`.
 
-Compose inicia PostgreSQL, aplica las migraciones, crea (si no existe) el superadministrador inicial y levanta API y frontend. Los datos de PostgreSQL persisten en el volumen `postgres_data`.
+Compose inicia PostgreSQL, ejecuta el servicio auxiliar `migrate` y después levanta API y frontend. El seed es manual (perfil `setup`), no se ejecuta con cada arranque. Es idempotente y no cambia contraseñas de usuarios existentes. Las credenciales del seed solo se pasan a ese servicio; se pueden retirar de `.env` después de inicializar la cuenta. Los datos de PostgreSQL persisten en el volumen `postgres_data`.
+
+Las imágenes se construyen por etapas con `npm ci` y `package-lock.json`. La API y el frontend se ejecutan como el usuario `node`, no como root. La imagen API de ejecución no incluye las herramientas de compilación/migración; estas viven en la etapa `tools`. Next.js usa una imagen de ejecución `standalone`.
+
+### Comprobaciones de salud
+
+- API liveness: `GET /api/health` comprueba que el proceso responde.
+- API readiness: `GET /api/health/ready` comprueba PostgreSQL con `SELECT 1`; devuelve `503` si no está disponible.
+- Frontend: `GET /api/health` en el puerto 3000 comprueba que Next.js responde, sin autenticación.
+
+Docker comprueba readiness de API y salud de frontend cada 15 segundos. La web espera que la API esté saludable al arrancar. Consulta el estado con `docker compose ps`; que `migrate` termine con código 0 es normal. Un estado `unhealthy` no provoca por sí mismo un reinicio automático en Compose.
 
 ## Desarrollo local
 
 1. Copia `.env.example` a `.env` y configura `DATABASE_URL` para tu PostgreSQL local.
-2. Ejecuta `npm install`.
+2. Ejecuta `npm ci` (usa `npm install` al añadir o actualizar dependencias y versiona el lockfile actualizado).
 3. Ejecuta `npm run db:migrate` y `npm run db:seed`.
 4. Ejecuta `npm run dev` para iniciar API y frontend en paralelo.
 
@@ -54,3 +65,7 @@ El idioma es global y se configura con `APP_LOCALE` en `.env`: `es` (predetermin
 
 - **Al cambiar el idioma**, edita `APP_LOCALE` en `.env` y ejecuta `docker compose up -d`. Esto recrea los servicios afectados con el nuevo valor; no hace falta reconstruir las imágenes. Los usuarios con la aplicación abierta deben recargar la página.
 - **Al cambiar el código** que implementa o utiliza los idiomas, reconstruye API y frontend con `docker compose up --build -d api web`. `docker compose up -d` y `docker compose up -d --force-recreate api` solo crean contenedores desde las imágenes existentes; no incorporan cambios de código.
+
+## Copias de seguridad
+
+Consulta [la guía de backup y restauración de PostgreSQL](docs/postgresql-backups.md). Incluye comandos PowerShell para generar archivos, verificar su contenido y restaurar en una base nueva sin sobrescribir producción.

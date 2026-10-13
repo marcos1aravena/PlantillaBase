@@ -66,10 +66,13 @@ La web se sirve en `http://localhost:3000` y la API en `http://localhost:4000`. 
 
 ## Detalles importantes de Docker/build
 
-- El Dockerfile de API debe copiar `apps/api/prisma` antes de `npm install`, porque el `postinstall` de Prisma busca el esquema.
+- Docker utiliza `npm ci --ignore-scripts` con ambos manifiestos de workspace y el lockfile. Prisma se genera explícitamente después de copiar el esquema.
 - La compilación TypeScript de la API genera `apps/api/dist/src/server.js`; el script `start` apunta a `dist/src/server.js`.
 - Al cambiar código de API, reconstruir la imagen con `docker compose up --build -d api`.
 - No borrar el volumen PostgreSQL para solucionar errores de aplicación; conservar los datos salvo que se solicite explícitamente eliminarlos.
+- Imágenes multietapa: API `runtime` sin herramientas y `tools` para `migrate`/`seed`; frontend standalone. Ambas aplicaciones corren como `node`.
+- `migrate` termina antes de API; `seed` es manual: `docker compose run --build --rm seed`. Credenciales de seed no se pasan a la API.
+- Healthchecks: API `/api/health/ready` verifica PostgreSQL, frontend `/api/health` verifica Next.js. Backups documentados en `docs/postgresql-backups.md`.
 
 ## Convenciones al continuar el trabajo
 

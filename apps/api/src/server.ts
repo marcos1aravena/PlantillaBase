@@ -86,6 +86,15 @@ const profileSchema = z.object({
 
 app.get('/api/config', (_req, res) => res.json({ locale: appLocale }));
 app.get('/api/health', (_req, res) => res.json({ status: 'ok' }));
+app.get('/api/health/ready', async (_req, res) => {
+  res.setHeader('Cache-Control', 'no-store');
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+    res.json({ status: 'ready' });
+  } catch {
+    res.status(503).json({ status: 'unavailable' });
+  }
+});
 
 const loginLimit = attemptLimiter(prisma, 'login', (req) => typeof req.body?.email === 'string' ? req.body.email.trim().toLowerCase().slice(0, 254) : 'invalid');
 const passwordLimit = attemptLimiter(prisma, 'password', (req) => (req as AuthRequest).user!.id);
