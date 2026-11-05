@@ -88,3 +88,35 @@ Las respuestas de validación incluyen `fieldErrors`, un mapa de campos a mensaj
 ## Copias de seguridad
 
 Consulta [la guía de backup y restauración de PostgreSQL](docs/postgresql-backups.md). Incluye comandos PowerShell para generar archivos, verificar su contenido y restaurar en una base nueva sin sobrescribir producción.
+
+## Pruebas automatizadas
+
+Preparación (Node.js 22+, Docker activo y puertos 55432, 4100 y 3100 disponibles):
+
+```bash
+npm ci
+npx prisma generate --schema=apps/api/prisma/schema.prisma
+npx playwright install chromium
+```
+
+```bash
+npm run test:unit
+npm run test:integration
+npm run test:e2e
+# Ejecuta los tres niveles, secuencialmente:
+npm test
+```
+
+- **Unitarias:** mantienen las pruebas de validación, permisos, CSRF, cliente HTTP, paginación y cobertura de diccionarios. No requieren una base real.
+- **Integración:** peticiones HTTP reales contra Express y PostgreSQL con migraciones reales. Cubren login correcto/incorrecto, JWT expirado, matriz de roles, restricciones de perfil, cambio de contraseña, revocación, CRUD/desactivación, campos públicos y protección concurrente del último superadministrador.
+- **E2E:** Playwright abre Chromium y prueba login, sidebar por rol, perfil, formularios de usuarios, cambio de contraseña, revocación y carga/error/reintento del idioma. Conserva trazas y capturas al fallar.
+
+Integración y E2E se ejecutan automáticamente con `APP_LOCALE=es` y `en`. El runner inicia el proyecto Docker independiente `base-app-tests` desde `docker-compose.test.yml`; usa la base `base_app_test` en el puerto 55432, sin volumen persistente. Cada escenario reinicializa únicamente esa base, con usuarios ficticios. Una comprobación de URL impide ejecutar la limpieza contra otra base. Al terminar, el runner elimina solo ese stack de pruebas; no toca contenedores ni volúmenes de la aplicación.
+
+**No ejecutes integración y E2E simultáneamente:** utilizan el mismo stack y fixtures. Los servidores Playwright usan puertos independientes y `.next-test`, sin reutilizar servidores ya abiertos. Las pruebas E2E arrancan Next.js en desarrollo; las pruebas del despliegue/imagen de producción no están incluidas en esta iteración.
+
+**Límite de cobertura de esta iteración:** únicamente Chromium de Playwright en escritorio. Firefox, WebKit/Safari, navegadores móviles y versiones específicas de Chrome/Edge no están certificados por esta suite; esto no significa que la aplicación los bloquee.
+
+Los reportes por idioma se guardan en `playwright-report/es` y `playwright-report/en`; las trazas/capturas están en `test-results/`. Para abrir un reporte: `npx playwright show-report playwright-report/es`. Si interrumpes la ejecución y queda el stack de pruebas activo, límpialo con `docker compose -f docker-compose.test.yml -p base-app-tests down`.
+
+Las correcciones detectadas se registran en [docs/test-fixes.md](docs/test-fixes.md). Este registro no sustituye los backups de PostgreSQL ni el historial de Git.

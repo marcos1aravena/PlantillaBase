@@ -79,6 +79,10 @@ La web se sirve en `http://localhost:3000` y la API en `http://localhost:4000`. 
 - Imágenes multietapa: API `runtime` sin herramientas y `tools` para `migrate`/`seed`; frontend standalone. Ambas aplicaciones corren como `node`.
 - `migrate` termina antes de API; `seed` es manual: `docker compose run --build --rm seed`. Credenciales de seed no se pasan a la API.
 - Healthchecks: API `/api/health/ready` verifica PostgreSQL, frontend `/api/health` verifica Next.js. Backups documentados en `docs/postgresql-backups.md`.
+- Pruebas: `npm run test:unit`, `npm run test:integration`, `npm run test:e2e`; integración/E2E se ejecutan en es/en, sin paralelizar ambos comandos.
+- Stack de pruebas aislado `docker-compose.test.yml`, base desechable base_app_test en 55432; guards en `tests/fixtures.ts`. Nunca usar la base de desarrollo para fixtures/limpieza.
+- E2E Playwright únicamente Chromium escritorio, Next.js dev en puerto 3100 y API 4100; artefactos por idioma. No implica soporte certificado de Firefox/WebKit/móvil.
+- Registrar correcciones detectadas por tests en `docs/test-fixes.md`, no copiar código ni secretos como supuestos backups. Mutaciones update/delete usan un advisory lock transaccional para proteger el último superadministrador bajo concurrencia.
 
 ## Convenciones al continuar el trabajo
 

@@ -23,22 +23,30 @@ export async function createUser(actor: Role, input: CreateUserInput): Promise<U
   return publicUser(await prisma.user.create({ data: { ...fields, passwordHash: await bcrypt.hash(password, 12) } }));
 }
 export async function updateUser(actor: Role, id: string, input: UpdateUserInput): Promise<User> {
-  const target = await prisma.user.findUnique({ where: { id } });
-  if (!target) throw new AppError(404, 'Usuario no encontrado.', 'User not found.');
-  assertManage(actor, target.role);
-  if (input.role) assertAssignRole(actor, input.role);
-  if (target.role === 'SUPERADMIN' && input.active === false) throw new AppError(403, 'No se puede desactivar un superadministrador.', 'A super administrator cannot be deactivated.');
-  if (target.role === 'SUPERADMIN' && input.role && input.role !== 'SUPERADMIN') {
-    const count = await prisma.user.count({ where: { role: 'SUPERADMIN', active: true } });
-    if (count <= 1) throw new AppError(400, 'Debe existir al menos un superadministrador activo.', 'At least one active super administrator must exist.');
-  }
   const { password, ...fields } = input;
-  return publicUser(await prisma.user.update({ where: { id }, data: { ...fields, ...(password ? { passwordHash: await bcrypt.hash(password, 12), sessionVersion: { increment: 1 } } : {}) } }));
+  const passwordHash = password ? await bcrypt.hash(password, 12) : undefined;
+  return prisma.$transaction(async (tx) => {
+    // Serialize permission-sensitive mutations across API instances, before reading roles/counts.
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(7319401)`;
+    const target = await tx.user.findUnique({ where: { id } });
+    if (!target) throw new AppError(404, 'Usuario no encontrado.', 'User not found.');
+    assertManage(actor, target.role);
+    if (input.role) assertAssignRole(actor, input.role);
+    if (target.role === 'SUPERADMIN' && input.active === false) throw new AppError(403, 'No se puede desactivar un superadministrador.', 'A super administrator cannot be deactivated.');
+    if (target.role === 'SUPERADMIN' && input.role && input.role !== 'SUPERADMIN') {
+      const count = await tx.user.count({ where: { role: 'SUPERADMIN', active: true } });
+      if (count <= 1) throw new AppError(400, 'Debe existir al menos un superadministrador activo.', 'At least one active super administrator must exist.');
+    }
+    return publicUser(await tx.user.update({ where: { id }, data: { ...fields, ...(passwordHash ? { passwordHash, sessionVersion: { increment: 1 } } : {}) } }));
+  });
 }
 export async function deleteUser(actor: Role, id: string): Promise<void> {
-  const target = await prisma.user.findUnique({ where: { id } });
-  if (!target) throw new AppError(404, 'Usuario no encontrado.', 'User not found.');
-  assertManage(actor, target.role);
-  if (target.role === 'SUPERADMIN') throw new AppError(403, 'No se puede eliminar un superadministrador.', 'A super administrator cannot be deleted.');
-  await prisma.user.delete({ where: { id } });
+  await prisma.$transaction(async (tx) => {
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(7319401)`;
+    const target = await tx.user.findUnique({ where: { id } });
+    if (!target) throw new AppError(404, 'Usuario no encontrado.', 'User not found.');
+    assertManage(actor, target.role);
+    if (target.role === 'SUPERADMIN') throw new AppError(403, 'No se puede eliminar un superadministrador.', 'A super administrator cannot be deleted.');
+    await tx.user.delete({ where: { id } });
+  });
 }
